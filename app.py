@@ -59,34 +59,48 @@ def guardar_datos(df_to_save, archivo):
         sheet.clear()
         set_with_dataframe(sheet, df_to_save.drop(columns=['Mesa_Num'], errors='ignore'))
 
-# --- DISEÑO CSS (CORRECCIÓN DE VISIBILIDAD EN MÓVIL) ---
+# --- DISEÑO CSS ---
 st.markdown("""
     <style>
-    .stApp { background-color: #e9ecef; }
+    /* 1. Fondo Gris Más Oscuro */
+    .stApp { background-color: #cfd8dc; } 
     
-    /* FORZAR TÍTULOS NEGROS (Solución para el celular) */
-    label, .stMarkdown p, .stSelectbox label, .stTextInput label {
+    .block-container { padding-top: 1rem !important; }
+    
+    /* Etiquetas Negras */
+    label, .stMarkdown p, .stSelectbox label, .stTextInput label, .stNumberInput label {
         color: #000000 !important;
         font-weight: bold !important;
         opacity: 1 !important;
         font-size: 14px !important;
     }
     
-    /* Inputs con borde negro fuerte */
-    .stTextInput input, .stSelectbox div[data-baseweb="select"] {
+    /* Inputs y Bordes */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"], .stNumberInput input {
         border: 1.5px solid #000 !important;
         background-color: #ffffff !important;
         color: #000 !important;
+        font-weight: 500;
     }
-    
-    /* Estilos de Totales y Cabeceras */
+
+    /* 2. Truco para ocultar flechas del input numérico (que parezca texto) */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; 
+        margin: 0; 
+    }
+    input[type=number] {
+        -moz-appearance: textfield; /* Firefox */
+    }
+
+    /* Paneles */
     .total-black { background-color: #000; color: #fff; padding: 5px; border-radius: 4px; text-align: center; border: 1px solid #000; }
     .total-grey { background-color: #ffffff; border: 2px solid #000; padding: 5px; border-radius: 4px; text-align: center; color: #000; font-weight: bold; }
+    .stExpander { border: 2px solid #000 !important; background-color: #ffffff !important; border-radius: 8px !important; }
+    
     .mesa-header { background-color: #000; color: #fff; padding: 6px 15px; font-weight: bold; margin-top: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
-    .pers-label { background-color: #fff; color: #000; padding: 1px 8px; border-radius: 10px; font-size: 11px; }
-
-    .stExpander { border: 2px solid #000 !important; background-color: #ffffff !important; }
-    .event-title { text-align: center; font-size: 24px; font-weight: bold; color: #000; text-transform: uppercase; margin-bottom: 10px; }
+    .pers-label { background-color: #fff; color: #000; padding: 1px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase; }
+    .event-title { text-align: center; font-size: 24px; font-weight: bold; color: #000; margin-bottom: 10px; text-transform: uppercase; }
     
     #MainMenu, footer, header {visibility: hidden;}
     </style>
@@ -104,14 +118,14 @@ if "focus_key" not in st.session_state:
     st.session_state.focus_key = 0
 
 # --- CABECERA ---
-c_l, c_c, c_r = st.columns([1, 1, 1])
+c_l, c_c, c_r = st.columns([1.5, 1, 1.5])
 with c_c:
     if os.path.exists("logonegro.jpg"):
         st.image("logonegro.jpg", width=120)
 
 st.markdown(f"<div class='event-title'>{nombre_evento}</div>", unsafe_allow_html=True)
 
-# --- PANEL DE TOTALES ---
+# --- PANEL TOTALES ---
 df_full = st.session_state.df
 if not df_full.empty:
     mesas_cont = df_full[df_full['Mesa'].astype(str).str.strip() != "0"]['Mesa'].nunique()
@@ -121,7 +135,6 @@ if not df_full.empty:
                 ("ADOL.", len(df_full[df_full['Categoria']=='ADOLESCENTE']), "grey"),
                 ("MENOR", len(df_full[df_full['Categoria']=='MENOR']), "grey"),
                 ("BEBÉ", len(df_full[df_full['Categoria']=='BEBÉ']), "grey")]
-    
     for i, (lab, val, style) in enumerate(t_labels):
         t_cols[i].markdown(f"<div class='total-{style}'><small>{lab}</small><br><b>{val}</b></div>", unsafe_allow_html=True)
 
@@ -130,21 +143,44 @@ st.write("<br>", unsafe_allow_html=True)
 # --- FORMULARIO DE REGISTRO ---
 with st.expander("➕ AÑADIR NUEVO INVITADO", expanded=True):
     with st.form("alta_form", clear_on_submit=True):
-        f_m = st.text_input("N° MESA", key=f"focus_{st.session_state.focus_key}")
-        f_n = st.text_input("APELLIDO y nombre")
-        f_c = st.selectbox("CATEGORÍA", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"])
-        f_o = st.text_input("OBSERVACIONES")
+        r1, r2 = st.columns([1, 3])
+        # CAMBIO CLAVE: number_input para forzar teclado numérico en móviles
+        # Usamos step=1 y format=%d para enteros puros.
+        f_m = r1.number_input("N° MESA", min_value=0, step=1, format="%d", key=f"focus_{st.session_state.focus_key}")
+        
+        f_n = r2.text_input("APELLIDO y nombre")
+        r3, r4 = st.columns(2)
+        f_c = r3.selectbox("CATEGORÍA", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"])
+        f_o = r4.text_input("OBSERVACIONES")
         
         if st.form_submit_button("📥 AÑADIR A LA LISTA", use_container_width=True):
             if f_n:
-                nuevo_row = pd.DataFrame([{"ID": secrets.token_hex(3).upper(), "Mesa": f_m if f_m else "0", 
+                # Convertimos el número de mesa a string para guardarlo consistente con el resto
+                mesa_str = str(int(f_m))
+                nuevo_row = pd.DataFrame([{"ID": secrets.token_hex(3).upper(), "Mesa": mesa_str, 
                                           "Nombre": f_n.upper(), "Categoria": f_c, "Observaciones": f_o.upper(), "Asistio": "NO"}])
                 st.session_state.df = pd.concat([st.session_state.df, nuevo_row], ignore_index=True)
                 guardar_datos(st.session_state.df, nombre_evento)
                 st.session_state.focus_key += 1
                 st.rerun()
 
-# --- BUSCADOR Y GUARDADO ---
+# --- SCRIPT DE AUTOFOCO INTELIGENTE ---
+# Busca el primer input visible (que ahora será type="number" o "text") y lo enfoca
+components.html(
+    f"""<script>
+        function setFocus() {{
+            var inputs = window.parent.document.querySelectorAll('input');
+            if (inputs.length > 0) {{
+                inputs[0].focus();
+                inputs[0].select();
+            }}
+        }}
+        // Un pequeño retraso asegura que Streamlit haya terminado de dibujar el input
+        setTimeout(setFocus, 350);
+    </script>""", height=0
+)
+
+# --- BUSCADOR ---
 st.markdown("---")
 b_col1, b_col2 = st.columns([2, 1])
 with b_col1:
@@ -153,9 +189,9 @@ with b_col2:
     st.write("<div style='margin-top:28px'></div>", unsafe_allow_html=True)
     if st.button("💾 GUARDAR", use_container_width=True):
         guardar_datos(st.session_state.df, nombre_evento)
-        st.toast("Guardado")
+        st.toast("Guardado correctamente")
 
-# --- LISTA POR MESAS ---
+# --- LISTA ---
 df_list = st.session_state.df.copy()
 if busqueda:
     df_list = df_list[df_list['Nombre'].apply(lambda x: busqueda in normalizar_texto(x))]
