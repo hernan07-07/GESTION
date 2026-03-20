@@ -10,16 +10,41 @@ import streamlit.components.v1 as components
 # 1. CONFIGURACIÓN
 st.set_page_config(page_title="TONUCOS Gestor", layout="wide")
 
-# --- CSS: FIX NUCLEAR PARA CONTRASTE EN DESPLEGABLES ---
+# --- CSS: FIX DEFINITIVO MÓVIL Y CURSOR ---
 st.markdown("""
     <style>
     .stApp { background-color: #cfd8dc; }
     .block-container { padding-top: 0rem !important; max-width: 95% !important; }
     header { visibility: hidden; }
     
-    .logo-container { display: flex; justify-content: center; margin-top: -15px; }
-    .event-title { text-align: center; font-size: 20px; font-weight: 900; color: #263238; margin-top: -10px; margin-bottom: 5px; }
+    /* CURSOR VISIBLE Y FOCO */
+    input { caret-color: #ff0000 !important; } 
+    .stTextInput input:focus, .stNumberInput input:focus {
+        border: 2px solid #1e88e5 !important;
+        box-shadow: 0 0 5px rgba(30, 136, 229, 0.5) !important;
+    }
 
+    /* 🚨 FIX SUPREMO PARA LETRAS BLANCAS EN DESPLEGABLE CELULAR 🚨 */
+    /* Forzamos que CUALQUIER lista de opciones (listbox/menu) tenga fondo blanco */
+    div[data-baseweb="popover"], ul[role="listbox"], ul[data-baseweb="menu"] {
+        background-color: #ffffff !important;
+    }
+
+    /* Forzamos que CUALQUIER texto dentro de una opción sea NEGRO */
+    li[role="option"], li[role="option"] span, div[data-baseweb="popover"] * {
+        color: #000000 !important;
+        font-weight: 800 !important;
+    }
+
+    /* Color al seleccionar/tocar */
+    li[role="option"]:hover, li[role="option"][aria-selected="true"] {
+        background-color: #263238 !important;
+    }
+    li[role="option"]:hover *, li[role="option"][aria-selected="true"] * {
+        color: #ffffff !important;
+    }
+
+    /* Textos y Etiquetas Base */
     label, .stMarkdown p, .stSelectbox label, .stTextInput label {
         color: #000000 !important;
         font-weight: 800 !important;
@@ -31,56 +56,19 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* 🔥 FIX NUCLEAR PARA MENÚS DESPLEGABLES 🔥 */
-    /* Forzar fondo blanco y borde al contenedor flotante */
-    div[data-baseweb="popover"], 
-    ul[role="listbox"], 
-    div[role="listbox"] {
-        background-color: #ffffff !important;
-        border: 2px solid #263238 !important;
-    }
-    
-    /* Forzar fondo blanco a cada opción */
-    li[role="option"] {
-        background-color: #ffffff !important;
-    }
-
-    /* Forzar COLOR NEGRO a los textos (spans) dentro de las opciones */
-    li[role="option"] span, 
-    div[data-baseweb="popover"] span {
-        color: #000000 !important;
-        font-weight: 800 !important;
-    }
-
-    /* Efecto al pasar el dedo o mouse */
-    li[role="option"]:hover, 
-    li[role="option"]:hover span {
-        background-color: #263238 !important;
-        color: #ffffff !important;
-    }
-
-    /* Texto de la opción que ya está seleccionada y visible */
-    div[data-baseweb="select"] div, div[data-baseweb="select"] span {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    /* ---------------------------------------------------- */
-
-    .total-card { 
-        background-color: #263238; color: #ffffff; padding: 5px; 
-        border-radius: 4px; text-align: center; border: 1px solid #000;
-    }
+    /* Estética General */
+    .logo-container { display: flex; justify-content: center; margin-top: -15px; }
+    .event-title { text-align: center; font-size: 20px; font-weight: 900; color: #263238; margin-top: -10px; margin-bottom: 5px; }
+    .total-card { background-color: #263238; color: #ffffff; padding: 5px; border-radius: 4px; text-align: center; border: 1px solid #000; }
     .total-card b { font-size: 16px; }
-
     hr { margin: 2px 0px !important; border-top: 1px solid #263238 !important; }
-    
-    .mesa-header { 
-        background-color: #000; color: #fff; padding: 4px 10px; 
-        font-weight: bold; margin-top: 2px !important; border-radius: 4px; 
-        display: flex; justify-content: space-between; align-items: center; 
-    }
+    .mesa-header { background-color: #000; color: #fff; padding: 4px 10px; font-weight: bold; margin-top: 5px !important; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
     .pers-label { background-color: #fff; color: #000; padding: 0px 6px; border-radius: 8px; font-size: 10px; }
-
+    
+    /* Ajuste para el radio button de ordenamiento */
+    div.row-widget.stRadio > div { flex-direction: row; justify-content: center; align-items: center; }
+    div.row-widget.stRadio label { padding: 0px 10px; background-color: #fff; border: 1px solid #000; border-radius: 4px; margin: 0 2px;}
+    
     #MainMenu, footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
@@ -156,12 +144,16 @@ components.html(f"<script>setTimeout(function(){{ window.parent.document.querySe
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
-# BUSCADOR
-bc1, bc2 = st.columns([3, 1])
-with bc1: s_q = st.text_input("🔍 BUSCAR", placeholder="Nombre...").upper()
+# BUSCADOR Y BOTONES DE ORDEN
+bc1, bc2, bc3 = st.columns([2, 1.5, 1])
+with bc1: 
+    s_q = st.text_input("🔍 BUSCAR", placeholder="Nombre...").upper()
 with bc2: 
-    st.write("<div style='margin-top:18px'></div>", unsafe_allow_html=True)
-    if st.button("💾 GUARDAR CAMBIOS", use_container_width=True):
+    st.write("<div style='margin-top:22px'></div>", unsafe_allow_html=True)
+    orden_vista = st.radio("ORDEN", ["🪑 Mesas", "🔤 A-Z"], label_visibility="collapsed", horizontal=True)
+with bc3: 
+    st.write("<div style='margin-top:22px'></div>", unsafe_allow_html=True)
+    if st.button("💾 GUARDAR", use_container_width=True):
         guardar_datos(st.session_state.df, nombre_evento)
         st.toast("¡Sincronizado!")
 
@@ -173,10 +165,31 @@ if not df_v.empty:
     df_v['M_Int'] = pd.to_numeric(df_v['Mesa'], errors='coerce').fillna(0).astype(int)
     cat_colors = {"MAYOR": "#ced4da", "ADOLESCENTE": "#90cdf4", "MENOR": "#9ae6b4", "BEBÉ": "#feb2b2"}
     
-    for mesa in sorted(df_v['M_Int'].unique()):
-        sub = df_v[df_v['M_Int'] == mesa]
-        st.markdown(f"<div class='mesa-header'><span>🪑 MESA {mesa}</span><span class='pers-label'>{len(sub)} PERS.</span></div>", unsafe_allow_html=True)
-        for idx, row in sub.iterrows():
+    # --- VISTA POR MESAS ---
+    if orden_vista == "🪑 Mesas":
+        for mesa in sorted(df_v['M_Int'].unique()):
+            sub = df_v[df_v['M_Int'] == mesa]
+            st.markdown(f"<div class='mesa-header'><span>🪑 MESA {mesa}</span><span class='pers-label'>{len(sub)} PERS.</span></div>", unsafe_allow_html=True)
+            for idx, row in sub.iterrows():
+                l1, l2, l3, l4, l5 = st.columns([0.6, 2.5, 1.5, 1.5, 0.4])
+                st.session_state.df.at[idx, 'Mesa'] = l1.text_input(f"m_{idx}", row['Mesa'], label_visibility="collapsed")
+                st.session_state.df.at[idx, 'Nombre'] = l2.text_input(f"n_{idx}", row['Nombre'], label_visibility="collapsed").upper()
+                
+                bg = cat_colors.get(row['Categoria'], "#fff")
+                st.markdown(f'<style>div[data-baseweb="select"]:has(input[aria-label*="c_{idx}"]) {{ background-color: {bg} !important; }}</style>', unsafe_allow_html=True)
+                st.session_state.df.at[idx, 'Categoria'] = l3.selectbox(f"c_{idx}", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"], index=["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"].index(row['Categoria']), label_visibility="collapsed")
+                
+                st.session_state.df.at[idx, 'Observaciones'] = l4.text_input(f"o_{idx}", row['Observaciones'], label_visibility="collapsed").upper()
+                if l5.button("🗑️", key=f"d_{idx}"):
+                    st.session_state.df = st.session_state.df.drop(idx)
+                    guardar_datos(st.session_state.df, nombre_evento)
+                    st.rerun()
+
+    # --- VISTA ALFABÉTICA (A-Z) ---
+    else:
+        df_v = df_v.sort_values(by="Nombre") # Ordenar por nombre
+        st.markdown(f"<div class='mesa-header'><span>🔤 ORDEN ALFABÉTICO</span><span class='pers-label'>{len(df_v)} PERS.</span></div>", unsafe_allow_html=True)
+        for idx, row in df_v.iterrows():
             l1, l2, l3, l4, l5 = st.columns([0.6, 2.5, 1.5, 1.5, 0.4])
             st.session_state.df.at[idx, 'Mesa'] = l1.text_input(f"m_{idx}", row['Mesa'], label_visibility="collapsed")
             st.session_state.df.at[idx, 'Nombre'] = l2.text_input(f"n_{idx}", row['Nombre'], label_visibility="collapsed").upper()
