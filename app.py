@@ -90,11 +90,13 @@ if not df_f.empty:
     for i, (l, v) in enumerate(stats):
         t_cols[i].markdown(f"<div class='total-card'><small>{l}</small><br><b>{v}</b></div>", unsafe_allow_html=True)
 
-# --- AÑADIR REGISTRO (UNA LÍNEA) ---
+# ... (Mantené todo tu código de arriba igual: CSS, Funciones, etc.) ...
+
+# --- SECCIÓN: AÑADIR REGISTRO ---
 with st.expander("➕ AÑADIR REGISTRO", expanded=True):
     c1, c2, c3, c4, c5 = st.columns([0.6, 2.5, 1.5, 1.5, 0.4])
     
-    # Mesa como TEXT_INPUT para que el foco sea más estable
+    # IMPORTANTE: Le puse etiquetas simples "M", "N", etc.
     f_m = c1.text_input("M", placeholder="MESA", key=f"f_m_{st.session_state.focus_key}", label_visibility="collapsed")
     f_n = c2.text_input("N", placeholder="APELLIDO y nombre", key=f"f_n_{st.session_state.focus_key}", label_visibility="collapsed")
     f_c = c3.selectbox("C", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"], key=f"f_c_{st.session_state.focus_key}", label_visibility="collapsed")
@@ -105,29 +107,43 @@ with st.expander("➕ AÑADIR REGISTRO", expanded=True):
             nuevo = pd.DataFrame([{"ID": secrets.token_hex(3).upper(), "Mesa": f_m, "Nombre": f_n.upper(), "Categoria": f_c, "Observaciones": f_o.upper(), "Asistio": "NO"}])
             st.session_state.df = pd.concat([st.session_state.df, nuevo], ignore_index=True)
             guardar_datos(st.session_state.df, nombre_evento)
+            
+            # Subimos el contador para limpiar campos
             st.session_state.focus_key += 1
             st.rerun()
 
-# --- SCRIPT DE FOCO ATÓMICO ---
+# --- SCRIPT DE FOCO "NINJA" (Copia esto tal cual) ---
 components.html(f"""
     <script>
-    function setFocus() {{
-        var doc = window.parent.document;
-        // Buscamos el input que tiene el placeholder "MESA"
-        var inputs = Array.from(doc.querySelectorAll('input'));
-        var mesaInput = inputs.find(el => el.placeholder === 'MESA');
-        if (mesaInput) {{
-            mesaInput.focus();
-            mesaInput.select();
+    const focusMesa = () => {{
+        // Accedemos al documento principal desde el iframe de Streamlit
+        const mainDoc = window.parent.document;
+        
+        // Buscamos TODOS los inputs
+        const inputs = Array.from(mainDoc.querySelectorAll('input'));
+        
+        // Buscamos específicamente el que tiene el placeholder "MESA"
+        const target = inputs.find(i => i.placeholder === 'MESA');
+
+        if (target) {{
+            target.focus();
+            target.click(); // Algunos celulares necesitan el click para abrir teclado
+            
+            // Si tiene un valor (como un 0), lo seleccionamos para sobreescribir rápido
+            if (target.value !== "") {{
+                target.setSelectionRange(0, target.value.length);
+            }}
         }}
-    }}
-    // Reintentar un par de veces por si la página tarda en cargar
-    setTimeout(setFocus, 300);
-    setTimeout(setFocus, 700);
+    }};
+
+    // Intentos repetidos en milisegundos clave para ganarle a la carga del celular
+    setTimeout(focusMesa, 200);  
+    setTimeout(focusMesa, 500);  
+    setTimeout(focusMesa, 1000); 
     </script>
 """, height=0)
 
-st.markdown("<hr>", unsafe_allow_html=True)
+# ... (El resto del listado sigue igual) ...
 
 # BUSCADOR
 bc1, bc2, bc3 = st.columns([2, 1.5, 1])
