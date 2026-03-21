@@ -120,30 +120,47 @@ if not df_f.empty:
         t_cols[i].markdown(f"<div class='total-card'><small>{l}</small><br><b>{v}</b></div>", unsafe_allow_html=True)
 
 # --- NUEVO: AÑADIR REGISTRO EN UNA SOLA LÍNEA (Igual a los de abajo) ---
+# ... (Todo el código anterior de CSS y Funciones se mantiene igual) ...
+
+# --- SECCIÓN: AÑADIR REGISTRO EN UNA SOLA LÍNEA ---
 with st.expander("➕ AÑADIR REGISTRO", expanded=True):
-    # Usamos EXACTAMENTE las mismas proporciones que la lista de invitados
     c1, c2, c3, c4, c5 = st.columns([0.6, 2.5, 1.5, 1.5, 0.4])
     
-    # Ocultamos las etiquetas (label_visibility="collapsed") para que quede en 1 línea
+    # IMPORTANTE: El primer input tiene el índice [0] para el script de auto-foco
     f_m = c1.number_input("Mesa", min_value=0, step=1, key=f"f_m_{st.session_state.focus_key}", label_visibility="collapsed")
     f_n = c2.text_input("Nombre", placeholder="APELLIDO y nombre", key=f"f_n_{st.session_state.focus_key}", label_visibility="collapsed")
     f_c = c3.selectbox("Cat", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"], key=f"f_c_{st.session_state.focus_key}", label_visibility="collapsed")
     f_o = c4.text_input("Obs", placeholder="Observaciones", key=f"f_o_{st.session_state.focus_key}", label_visibility="collapsed")
     
-    # Botón en la última columna, reemplazando el tacho de basura
-    if c5.button("💾", key="btn_add_guest", help="Guardar e insertar"):
+    if c5.button("💾", key="btn_add_guest"):
         if f_n:
             nuevo = pd.DataFrame([{"ID": secrets.token_hex(3).upper(), "Mesa": str(int(f_m)), "Nombre": f_n.upper(), "Categoria": f_c, "Observaciones": f_o.upper(), "Asistio": "NO"}])
             st.session_state.df = pd.concat([st.session_state.df, nuevo], ignore_index=True)
             guardar_datos(st.session_state.df, nombre_evento)
+            
+            # Cambiamos la key para limpiar los campos y disparamos el foco
             st.session_state.focus_key += 1
             st.rerun()
 
-# Auto-foco
-components.html(f"<script>setTimeout(function(){{ window.parent.document.querySelectorAll('input')[0].focus(); }}, 300);</script>", height=0)
+# --- SCRIPT DE AUTO-FOCO DINÁMICO ---
+# Este componente detecta cuando la página carga y pone el cursor en el primer input (MESA)
+components.html(
+    f"""
+    <script>
+        // Esperamos un momento a que Streamlit renderice los inputs
+        setTimeout(function() {{
+            var inputs = window.parent.document.querySelectorAll('input');
+            if (inputs.length > 0) {{
+                inputs[0].focus(); 
+                inputs[0].select(); // Además de hacer foco, selecciona el número para borrarlo fácil
+            }}
+        }}, 500);
+    </script>
+    """,
+    height=0,
+)
 
-st.markdown("<hr>", unsafe_allow_html=True)
-
+# ... (El resto del código del Buscador y Listado se mantiene igual) ...
 # BUSCADOR Y BOTONES DE ORDEN
 bc1, bc2, bc3 = st.columns([2, 1.5, 1])
 with bc1: 
