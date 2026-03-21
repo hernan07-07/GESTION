@@ -10,46 +10,27 @@ import streamlit.components.v1 as components
 # 1. CONFIGURACIÓN
 st.set_page_config(page_title="TONUCOS Gestor", layout="wide")
 
-# --- CSS: NUESTRA ESTÉTICA ORIGINAL Y FIX PARA MÓVILES ---
+# --- NUESTRO CSS DE SIEMPRE (Mantenemos la estética y los colores) ---
 st.markdown("""
     <style>
     .stApp { background-color: #cfd8dc; }
     .block-container { padding-top: 0rem !important; max-width: 95% !important; }
     header { visibility: hidden; }
     
-    /* CURSOR VISIBLE Y FOCO */
     input { caret-color: #ff0000 !important; } 
-    .stTextInput input:focus, .stNumberInput input:focus {
+    .stTextInput input:focus {
         border: 2px solid #1e88e5 !important;
         box-shadow: 0 0 5px rgba(30, 136, 229, 0.5) !important;
     }
 
-    /* 🚨 FIX SUPREMO PARA LETRAS BLANCAS EN DESPLEGABLE CELULAR 🚨 */
-    div[data-baseweb="popover"], ul[role="listbox"], ul[data-baseweb="menu"] {
-        background-color: #ffffff !important;
-    }
-    li[role="option"], li[role="option"] span, div[data-baseweb="popover"] * {
-        color: #000000 !important;
-        font-weight: 800 !important;
-    }
-    li[role="option"]:hover, li[role="option"][aria-selected="true"] {
-        background-color: #263238 !important;
-    }
-    li[role="option"]:hover *, li[role="option"][aria-selected="true"] * {
-        color: #ffffff !important;
-    }
+    /* Fix Desplegables */
+    div[data-baseweb="popover"], ul[role="listbox"] { background-color: #ffffff !important; }
+    li[role="option"] span { color: #000000 !important; font-weight: 800 !important; }
+    li[role="option"]:hover { background-color: #263238 !important; }
 
-    /* Textos y Etiquetas Base */
-    label, .stMarkdown p, .stSelectbox label, .stTextInput label {
-        color: #000000 !important;
-        font-weight: 800 !important;
-    }
-    
-    .stTextInput input, .stNumberInput input, div[data-baseweb="select"] > div {
-        border: 2px solid #263238 !important;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
+    /* Etiquetas */
+    label, .stMarkdown p { color: #000000 !important; font-weight: 800 !important; }
+    .stTextInput input { border: 2px solid #263238 !important; background-color: #ffffff !important; color: #000000 !important; }
 
     /* Estética General */
     .logo-container { display: flex; justify-content: center; margin-top: -15px; }
@@ -60,50 +41,40 @@ st.markdown("""
     .mesa-header { background-color: #000; color: #fff; padding: 4px 10px; font-weight: bold; margin-top: 5px !important; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
     .pers-label { background-color: #fff; color: #000; padding: 0px 6px; border-radius: 8px; font-size: 10px; }
     
-    /* Ajuste para el radio button de ordenamiento */
-    div.row-widget.stRadio > div { flex-direction: row; justify-content: center; align-items: center; }
-    div.row-widget.stRadio label { padding: 0px 10px; background-color: #fff; border: 1px solid #000; border-radius: 4px; margin: 0 2px;}
-    
+    div.row-widget.stRadio > div { flex-direction: row; justify-content: center; }
     #MainMenu, footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIONES ---
+# --- FUNCIONES DE DATOS ---
 def conectar_google_sheet(nombre_archivo):
     try:
         scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         s = st.secrets["gcp_service_account"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(s), scope)
-        client = gspread.authorize(creds)
-        return client.open(nombre_archivo).worksheet("Invitados")
+        return gspread.authorize(creds).open(nombre_archivo).worksheet("Invitados")
     except: return None
 
 def cargar_datos(archivo):
     sheet = conectar_google_sheet(archivo)
     if sheet:
-        try:
-            df = get_as_dataframe(sheet, evaluate_formulas=True, dtype=str).dropna(how='all')
-            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-            for col in ["ID", "Mesa", "Nombre", "Categoria", "Observaciones", "Asistio"]:
-                if col not in df.columns: df[col] = ""
-            return df.fillna("")
-        except: return pd.DataFrame(columns=["ID", "Mesa", "Nombre", "Categoria", "Observaciones", "Asistio"])
+        df = get_as_dataframe(sheet, evaluate_formulas=True, dtype=str).dropna(how='all')
+        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+        for col in ["ID", "Mesa", "Nombre", "Categoria", "Observaciones", "Asistio"]:
+            if col not in df.columns: df[col] = ""
+        return df.fillna("")
     return pd.DataFrame()
 
 def guardar_datos(df_to_save, archivo):
     sheet = conectar_google_sheet(archivo)
-    if sheet:
-        sheet.clear()
-        set_with_dataframe(sheet, df_to_save)
+    if sheet: sheet.clear(); set_with_dataframe(sheet, df_to_save)
 
-# --- APP ---
+# --- INICIO APP ---
 nombre_evento = st.query_params.get("id", "Boda Juan y Marta").replace("_", " ")
 
-if 'df' not in st.session_state or st.session_state.get('last_event') != nombre_evento:
+if 'df' not in st.session_state:
     st.session_state.df = cargar_datos(nombre_evento)
-    st.session_state.last_event = nombre_evento
-
-if "focus_key" not in st.session_state: st.session_state.focus_key = 0
+    st.session_state.focus_key = 0
 
 # LOGO Y TITULO
 st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
@@ -119,52 +90,48 @@ if not df_f.empty:
     for i, (l, v) in enumerate(stats):
         t_cols[i].markdown(f"<div class='total-card'><small>{l}</small><br><b>{v}</b></div>", unsafe_allow_html=True)
 
-# --- NUEVO: AÑADIR REGISTRO EN UNA SOLA LÍNEA (Igual a los de abajo) ---
-# ... (Todo el código anterior de CSS y Funciones se mantiene igual) ...
-
-# --- SECCIÓN: AÑADIR REGISTRO EN UNA SOLA LÍNEA ---
+# --- AÑADIR REGISTRO (UNA LÍNEA) ---
 with st.expander("➕ AÑADIR REGISTRO", expanded=True):
     c1, c2, c3, c4, c5 = st.columns([0.6, 2.5, 1.5, 1.5, 0.4])
     
-    # IMPORTANTE: El primer input tiene el índice [0] para el script de auto-foco
-    f_m = c1.number_input("Mesa", min_value=0, step=1, key=f"f_m_{st.session_state.focus_key}", label_visibility="collapsed")
-    f_n = c2.text_input("Nombre", placeholder="APELLIDO y nombre", key=f"f_n_{st.session_state.focus_key}", label_visibility="collapsed")
-    f_c = c3.selectbox("Cat", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"], key=f"f_c_{st.session_state.focus_key}", label_visibility="collapsed")
-    f_o = c4.text_input("Obs", placeholder="Observaciones", key=f"f_o_{st.session_state.focus_key}", label_visibility="collapsed")
+    # Mesa como TEXT_INPUT para que el foco sea más estable
+    f_m = c1.text_input("M", placeholder="MESA", key=f"f_m_{st.session_state.focus_key}", label_visibility="collapsed")
+    f_n = c2.text_input("N", placeholder="APELLIDO y nombre", key=f"f_n_{st.session_state.focus_key}", label_visibility="collapsed")
+    f_c = c3.selectbox("C", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"], key=f"f_c_{st.session_state.focus_key}", label_visibility="collapsed")
+    f_o = c4.text_input("O", placeholder="Observaciones", key=f"f_o_{st.session_state.focus_key}", label_visibility="collapsed")
     
-    if c5.button("💾", key="btn_add_guest"):
+    if c5.button("💾", key="btn_add"):
         if f_n:
-            nuevo = pd.DataFrame([{"ID": secrets.token_hex(3).upper(), "Mesa": str(int(f_m)), "Nombre": f_n.upper(), "Categoria": f_c, "Observaciones": f_o.upper(), "Asistio": "NO"}])
+            nuevo = pd.DataFrame([{"ID": secrets.token_hex(3).upper(), "Mesa": f_m, "Nombre": f_n.upper(), "Categoria": f_c, "Observaciones": f_o.upper(), "Asistio": "NO"}])
             st.session_state.df = pd.concat([st.session_state.df, nuevo], ignore_index=True)
             guardar_datos(st.session_state.df, nombre_evento)
-            
-            # Cambiamos la key para limpiar los campos y disparamos el foco
             st.session_state.focus_key += 1
             st.rerun()
 
-# --- SCRIPT DE AUTO-FOCO DINÁMICO ---
-# Este componente detecta cuando la página carga y pone el cursor en el primer input (MESA)
-components.html(
-    f"""
+# --- SCRIPT DE FOCO ATÓMICO ---
+components.html(f"""
     <script>
-        // Esperamos un momento a que Streamlit renderice los inputs
-        setTimeout(function() {{
-            var inputs = window.parent.document.querySelectorAll('input');
-            if (inputs.length > 0) {{
-                inputs[0].focus(); 
-                inputs[0].select(); // Además de hacer foco, selecciona el número para borrarlo fácil
-            }}
-        }}, 500);
+    function setFocus() {{
+        var doc = window.parent.document;
+        // Buscamos el input que tiene el placeholder "MESA"
+        var inputs = Array.from(doc.querySelectorAll('input'));
+        var mesaInput = inputs.find(el => el.placeholder === 'MESA');
+        if (mesaInput) {{
+            mesaInput.focus();
+            mesaInput.select();
+        }}
+    }}
+    // Reintentar un par de veces por si la página tarda en cargar
+    setTimeout(setFocus, 300);
+    setTimeout(setFocus, 700);
     </script>
-    """,
-    height=0,
-)
+""", height=0)
 
-# ... (El resto del código del Buscador y Listado se mantiene igual) ...
-# BUSCADOR Y BOTONES DE ORDEN
+st.markdown("<hr>", unsafe_allow_html=True)
+
+# BUSCADOR
 bc1, bc2, bc3 = st.columns([2, 1.5, 1])
-with bc1: 
-    s_q = st.text_input("🔍 BUSCAR", placeholder="Nombre...").upper()
+with bc1: s_q = st.text_input("🔍 BUSCAR", placeholder="Nombre...").upper()
 with bc2: 
     st.write("<div style='margin-top:22px'></div>", unsafe_allow_html=True)
     orden_vista = st.radio("ORDEN", ["🪑 Mesas", "🔤 A-Z"], label_visibility="collapsed", horizontal=True)
@@ -174,7 +141,7 @@ with bc3:
         guardar_datos(st.session_state.df, nombre_evento)
         st.toast("¡Sincronizado!")
 
-# LISTADO
+# LISTADO (Mantenemos tu lógica de Mesas / A-Z)
 df_v = st.session_state.df.copy()
 if s_q: df_v = df_v[df_v['Nombre'].str.contains(s_q, na=False)]
 
@@ -182,7 +149,6 @@ if not df_v.empty:
     df_v['M_Int'] = pd.to_numeric(df_v['Mesa'], errors='coerce').fillna(0).astype(int)
     cat_colors = {"MAYOR": "#ced4da", "ADOLESCENTE": "#90cdf4", "MENOR": "#9ae6b4", "BEBÉ": "#feb2b2"}
     
-    # --- VISTA POR MESAS ---
     if orden_vista == "🪑 Mesas":
         for mesa in sorted(df_v['M_Int'].unique()):
             sub = df_v[df_v['M_Int'] == mesa]
@@ -191,32 +157,19 @@ if not df_v.empty:
                 l1, l2, l3, l4, l5 = st.columns([0.6, 2.5, 1.5, 1.5, 0.4])
                 st.session_state.df.at[idx, 'Mesa'] = l1.text_input(f"m_{idx}", row['Mesa'], label_visibility="collapsed")
                 st.session_state.df.at[idx, 'Nombre'] = l2.text_input(f"n_{idx}", row['Nombre'], label_visibility="collapsed").upper()
-                
-                bg = cat_colors.get(row['Categoria'], "#fff")
-                st.markdown(f'<style>div[data-baseweb="select"]:has(input[aria-label*="c_{idx}"]) {{ background-color: {bg} !important; }}</style>', unsafe_allow_html=True)
                 st.session_state.df.at[idx, 'Categoria'] = l3.selectbox(f"c_{idx}", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"], index=["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"].index(row['Categoria']), label_visibility="collapsed")
-                
                 st.session_state.df.at[idx, 'Observaciones'] = l4.text_input(f"o_{idx}", row['Observaciones'], label_visibility="collapsed").upper()
                 if l5.button("🗑️", key=f"d_{idx}"):
-                    st.session_state.df = st.session_state.df.drop(idx)
-                    guardar_datos(st.session_state.df, nombre_evento)
-                    st.rerun()
-
-    # --- VISTA ALFABÉTICA (A-Z) ---
+                    st.session_state.df = st.session_state.df.drop(idx); guardar_datos(st.session_state.df, nombre_evento); st.rerun()
     else:
-        df_v = df_v.sort_values(by="Nombre") 
-        st.markdown(f"<div class='mesa-header'><span>🔤 ORDEN ALFABÉTICO</span><span class='pers-label'>{len(df_v)} PERS.</span></div>", unsafe_allow_html=True)
-        for idx, row in df_v.iterrows():
+        # Lógica A-Z simplificada
+        df_az = df_v.sort_values("Nombre")
+        st.markdown(f"<div class='mesa-header'><span>🔤 ORDEN ALFABÉTICO</span><span class='pers-label'>{len(df_az)} PERS.</span></div>", unsafe_allow_html=True)
+        for idx, row in df_az.iterrows():
             l1, l2, l3, l4, l5 = st.columns([0.6, 2.5, 1.5, 1.5, 0.4])
-            st.session_state.df.at[idx, 'Mesa'] = l1.text_input(f"m_{idx}", row['Mesa'], label_visibility="collapsed")
-            st.session_state.df.at[idx, 'Nombre'] = l2.text_input(f"n_{idx}", row['Nombre'], label_visibility="collapsed").upper()
-            
-            bg = cat_colors.get(row['Categoria'], "#fff")
-            st.markdown(f'<style>div[data-baseweb="select"]:has(input[aria-label*="c_{idx}"]) {{ background-color: {bg} !important; }}</style>', unsafe_allow_html=True)
-            st.session_state.df.at[idx, 'Categoria'] = l3.selectbox(f"c_{idx}", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"], index=["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"].index(row['Categoria']), label_visibility="collapsed")
-            
-            st.session_state.df.at[idx, 'Observaciones'] = l4.text_input(f"o_{idx}", row['Observaciones'], label_visibility="collapsed").upper()
-            if l5.button("🗑️", key=f"d_{idx}"):
-                st.session_state.df = st.session_state.df.drop(idx)
-                guardar_datos(st.session_state.df, nombre_evento)
-                st.rerun()
+            st.session_state.df.at[idx, 'Mesa'] = l1.text_input(f"ma_{idx}", row['Mesa'], label_visibility="collapsed")
+            st.session_state.df.at[idx, 'Nombre'] = l2.text_input(f"na_{idx}", row['Nombre'], label_visibility="collapsed").upper()
+            st.session_state.df.at[idx, 'Categoria'] = l3.selectbox(f"ca_{idx}", ["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"], index=["MAYOR", "ADOLESCENTE", "MENOR", "BEBÉ"].index(row['Categoria']), label_visibility="collapsed")
+            st.session_state.df.at[idx, 'Observaciones'] = l4.text_input(f"oa_{idx}", row['Observaciones'], label_visibility="collapsed").upper()
+            if l5.button("🗑️", key=f"da_{idx}"):
+                st.session_state.df = st.session_state.df.drop(idx); guardar_datos(st.session_state.df, nombre_evento); st.rerun()
