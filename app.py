@@ -8,7 +8,7 @@ import os
 import streamlit.components.v1 as components
 
 # 1. CONFIGURACIÓN
-st.set_page_config(page_title="TONUCOS Gestor", layout="wide")
+st.set_page_config(page_title="TONUCOS---- Gestor", layout="wide")
 
 # --- NUESTRO CSS DE SIEMPRE (Mantenemos la estética y los colores) ---
 st.markdown("""
